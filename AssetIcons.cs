@@ -11,18 +11,17 @@ public class ScriptableObjectIcon : Attribute
 }
 
 [ExecuteInEditMode]
+[InitializeOnLoad]
 public class AssetIcons : Editor {
 
     static bool enabled = false;
     public static Color backgroundColor = new Color(82f / 255f,82f / 255f, 82f / 255f, 1f);
     static Texture2D bg;
 
-    [ExecuteInEditMode]
-    private void OnEnable()
+    static AssetIcons()
     {
         EnableIcons();
     }
-    
 
     [MenuItem("Assets/Icons/Enable")]
     static void EnableIcons()
@@ -64,7 +63,6 @@ public class AssetIcons : Editor {
         if (bg == null)
         {
             bg = new Texture2D(32, 32);
-
             Color[] colors = new Color[32 * 32];
             for (int i = 0; i < colors.Length; i++)
             {
@@ -73,28 +71,40 @@ public class AssetIcons : Editor {
             bg.SetPixels(colors);
         }
 
-
         var t = AssetDatabase.LoadAssetAtPath(guid, typeof(object)) as object;
         if (t == null || t.GetType() == null) return;
-        var fields = t.GetType().GetFields();
+        
+        Sprite sprite = null;
+        Texture2D texture = null;
+        
+        var atts = t.GetType().GetFields().Where(fi => ((fi == null) ? 0 : fi.GetCustomAttributes(typeof(ScriptableObjectIcon), false).Count()) > 0);
 
-        var atts = fields.Where(fi => ((fi == null) ? 0 : fi.GetCustomAttributes(typeof(ScriptableObjectIcon), false).Count()) > 0);
-
-        if (atts.Count() == 1)
+        if (atts != null && atts.Count() == 1 && atts.First().GetValue(t).GetType() == typeof(Sprite))
         {
-            Rect r2 = new Rect(r);
-            r2.height -= 14;
-            GUI.DrawTexture(r2, bg, ScaleMode.StretchToFill, false);
-            GUI.DrawTexture(r2, bg, ScaleMode.StretchToFill, true, 0, backgroundColor, 2, 3);
-            // GUI.DrawTexture(r2, bg);
-
-
-            Sprite sprite = (Sprite)atts.First().GetValue(t);
-            if (sprite == null)
-                return;
-            r.yMin += 5;
-            r.height -= 22;
-            GUI.DrawTexture(r, sprite.texture, ScaleMode.ScaleToFit);
+            sprite = (Sprite)atts.First().GetValue(t);
         }
+
+        if (atts != null && atts.Count() == 1 && atts.First().GetValue(t).GetType() == typeof(Texture2D))
+        {
+            texture = (Texture2D)atts.First().GetValue(t);
+        }
+
+        if (sprite == null && texture == null)
+            return;
+        
+        Rect r2 = new Rect(r);
+        r2.height -= 14;
+        GUI.DrawTexture(r2, bg, ScaleMode.StretchToFill, false);
+        GUI.DrawTexture(r2, bg, ScaleMode.StretchToFill, true, 0, backgroundColor, 2, 3);
+        
+        r.yMin += 5;
+        r.height -= 22;
+
+        if(sprite != null)
+            GUI.DrawTexture(r, sprite.texture, ScaleMode.ScaleToFit);
+
+        if(texture != null)
+            GUI.DrawTexture(r, texture, ScaleMode.ScaleToFit);
+
     }
 }
